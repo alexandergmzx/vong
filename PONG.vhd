@@ -1,0 +1,342 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use IEEE.std_logic_unsigned.all;
+use ieee.numeric_std.all;
+
+entity PONG is
+port(CLOCK_50,resetc: in std_logic;
+	 SWITCH : in std_logic_vector(3 downto 0);
+	 VGA_R,VGA_G,VGA_B : out std_logic_vector ( 9 downto 0);
+	 vo,ho,v_blank,v_sync,v_clock: out std_logic;
+	 tx: out std_logic:='0';
+	 	RS		:	 OUT STD_LOGIC;
+		RW		:	 OUT STD_LOGIC;
+		EN		:	 OUT STD_LOGIC;
+		LCDON		:	 OUT STD_LOGIC;
+		LCDBLON		:	 OUT STD_LOGIC;
+		DATA		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0));
+end PONG;
+
+architecture beh of PONG is
+
+signal reset, ball_on, dir: std_logic;
+signal size: unsigned(9 downto 0);
+signal ball_y_motion, ball_x_motion: unsigned(9 downto 0);
+signal ball_y_pos, ball_x_pos: unsigned(9 downto 0);
+------------------new-------------------
+signal TECLADO_A,ENABLE_TECLADO_A:std_logic;
+signal TECLADO_B,ENABLE_TECLADO_B:std_logic;
+--signal flag:std_logic;
+
+signal PLAYER_A:std_logic;
+signal SIZE_A: unsigned(9 downto 0);
+signal PADDLE_A_MOTION: unsigned(9 downto 0);
+signal PADDLE_A_POS_Y, PADDLE_A_POS_X: unsigned(9 downto 0);
+
+signal PLAYER_B:std_logic;
+signal SIZE_B: unsigned(9 downto 0);
+signal PADDLE_B_MOTION: unsigned(9 downto 0);
+signal PADDLE_B_POS_Y, PADDLE_B_POS_X: unsigned(9 downto 0);
+----------------------------------------
+signal vx, hx: std_logic;
+signal v_on: std_logic;
+signal pix_row, pix_col: unsigned(9 downto 0);
+signal c_clk: std_logic;
+signal set_po_start: std_logic;
+signal bounce_on1: std_logic;
+signal bounce_on2: std_logic;
+--signal bits_o: std_logic_vector (8 downto 0);
+
+--Score Signals--
+signal scoreA,scoreB: std_logic_vector(1 downto 0):="00";
+signal winner: std_logic_vector(1 downto 0):="00";
+
+component VGAS_DE2
+port(clk: in std_logic;
+	 video_out: out std_logic;
+	 horiz_sync_out, vert_sync_out,vga_blank, vga_sync, pix_clk: out std_logic;
+	  pixel_row, pixel_col: out unsigned (9 downto 0));
+	 end component;
+	 
+COMPONENT sec_clk PORT(
+		clks:	IN STD_LOGIC;
+		rsts:  	in std_logic;
+		ops	:	OUT STD_LOGIC);
+END COMPONENT;
+
+COMPONENT letreros
+	PORT
+	(
+		CLK		:	 IN STD_LOGIC;
+		keys		:	 IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+		SW		:	 IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+		RS		:	 OUT STD_LOGIC;
+		RW		:	 OUT STD_LOGIC;
+		EN		:	 OUT STD_LOGIC;
+		LCDON		:	 OUT STD_LOGIC;
+		LCDBLON		:	 OUT STD_LOGIC;
+		DATA		:	 OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
+	);
+END COMPONENT;
+	 
+begin
+
+vga: VGAS_DE2 port map(
+clk=>CLOCK_50,
+video_out=>v_on,
+horiz_sync_out=>hx,
+vert_sync_out=>vx,
+vga_blank=>v_blank,
+vga_sync=>v_sync,
+pix_clk=>v_clock,
+pixel_row=>pix_row,
+pixel_col=>pix_col
+);
+
+manclk: sec_clk port map(
+clks=>CLOCK_50,
+rsts=>resetc,
+ops=>c_clk);
+
+scoA: letreros port map(CLOCK_50,winner,scoreA&scoreB,RS,RW,EN,LCDON,LCDBLON,DATA);
+
+vo<=vx;
+ho<=hx;
+size  <= to_unsigned (6,10);
+SIZE_A<= to_unsigned (8,10);
+SIZE_B<= to_unsigned (30,10);
+--ball_x_pos <= to_unsigned (320, 10);
+--PADDLE_A_POS_Y <= to_unsigned (240,10);
+PADDLE_A_POS_X <= to_unsigned (28, 10);
+PADDLE_B_POS_X <= to_unsigned (610, 10);
+
+
+process(SWITCH)
+begin
+TECLADO_A  <=(SWITCH(3));
+ENABLE_TECLADO_A<=(SWITCH(2));
+ENABLE_TECLADO_B<=(SWITCH(1));
+TECLADO_B <=(SWITCH(0));
+end process;
+
+Output_display:process(v_on,ball_on,PLAYER_A,PLAYER_B)
+begin
+
+if v_on='1' then
+	if ball_on='1' then
+	VGA_G<="1111111111";
+	else
+	VGA_G<="0000000000";
+	end if;
+-------------------NEW---------------------
+	if PLAYER_A='1' then
+	VGA_R<="1111111111";
+	else
+	VGA_R<="0000000000";
+	end if;
+	if PLAYER_B='1' then
+	VGA_B<="1111111111";
+	else
+	VGA_B<="0000000000";
+	end if;
+-----------------------------------------
+else
+VGA_R<=(others=>'0');
+VGA_G<=(others=>'0');
+VGA_B<=(others=>'0');
+end if;
+end process Output_display;
+
+display_ball:process(ball_x_pos, ball_y_pos, PADDLE_A_POS_X, PADDLE_A_POS_Y,PADDLE_B_POS_X,PADDLE_B_POS_Y, pix_row, pix_col, size, SIZE_A, SIZE_B)
+
+begin
+
+if ('0' & ball_x_pos <= pix_col + size) and
+   (ball_x_pos + size >= '0' & pix_col) and
+	('0' & ball_y_pos <= pix_row + size) and
+	(ball_y_pos +size >= '0' & pix_row) then
+	ball_on<='1';
+	else 
+	ball_on<='0';
+	end if;
+	
+	------------NEW---------------
+	if ('0' & PADDLE_A_POS_X <= pix_col + SIZE_A) and
+   (PADDLE_A_POS_X + SIZE_A >= '0' & pix_col) and
+	('0' & PADDLE_A_POS_Y <= pix_row + SIZE_B) and
+	(PADDLE_A_POS_Y +SIZE_B >= '0' & pix_row) then
+	PLAYER_A<='1';
+	else 
+	PLAYER_A<='0';
+	end if;
+	
+	if ('0' & PADDLE_B_POS_X <= pix_col + SIZE_A ) and
+   (PADDLE_B_POS_X + SIZE_A>= '0' & pix_col) and
+	('0' & PADDLE_B_POS_Y <= pix_row + SIZE_B) and
+	(PADDLE_B_POS_Y +SIZE_B >= '0' & pix_row) then
+	PLAYER_B<='1';
+	else 
+	PLAYER_B<='0';
+	end if;
+---------------------------
+end process display_ball;
+	
+move_ball_vert:process
+begin
+
+wait until rising_edge(vx) and hx='0';
+
+if set_po_start='1' and resetc='1' then
+
+	if (('0' & PADDLE_A_POS_X <= ball_x_pos + SIZE_A) 
+	and (PADDLE_A_POS_X + SIZE_A >= '0' & ball_x_pos)
+	and ('0' & PADDLE_A_POS_Y - SIZE_B - to_unsigned(10,10)=ball_y_pos)) 
+	or (('0' & PADDLE_B_POS_X <= ball_x_pos + SIZE_A) 
+	and (PADDLE_B_POS_X + SIZE_A >= '0' & ball_x_pos) 
+	and ('0' & PADDLE_B_POS_Y - SIZE_B - to_unsigned(10,10)=ball_y_pos))
+	then ball_y_motion<= to_unsigned(-2,10);
+
+	elsif (('0' & PADDLE_A_POS_X <= ball_x_pos + SIZE_A) 
+	and (PADDLE_A_POS_X + SIZE_A >= '0' & ball_x_pos) 
+	and ('0' & PADDLE_A_POS_Y+SIZE_B+to_unsigned(10,10)=ball_y_pos)) 
+	or (('0' & PADDLE_B_POS_X<= ball_x_pos + SIZE_A) 
+	and (PADDLE_B_POS_X + SIZE_A>= '0' & ball_x_pos) 
+	and ('0' & PADDLE_B_POS_Y+SIZE_B+to_unsigned(10,10)=ball_y_pos))
+	then ball_y_motion<= to_unsigned(2,10);
+	else
+		if('0' & ball_y_pos) >= to_unsigned(480,10) - size
+		then ball_y_motion<= to_unsigned(-2,10);
+		elsif ball_y_pos <=size
+		then ball_y_motion<= to_unsigned(2,10);
+		end if;
+	end if;
+ball_y_pos<=ball_y_pos + ball_y_motion;-- to_unsigned(420,10); 
+else
+ball_y_pos<=to_unsigned(232,10);--ball_y_pos;
+end if;
+
+end process move_ball_vert;
+
+
+
+---------------------NEW------------------------
+move_ball_vert1:
+process
+begin
+wait until rising_edge(vx) and hx='0';
+
+	if set_po_start='1' and resetc='1' then
+	if(ENABLE_TECLADO_A='1') then
+	if(TECLADO_A='1') then
+			if(PADDLE_A_POS_Y>SIZE_B) then
+			PADDLE_A_MOTION<= to_unsigned(-6,10);
+			else
+			PADDLE_A_MOTION<= to_unsigned(0,10);
+			end if;
+	else	
+		if(PADDLE_A_POS_Y<to_unsigned(439,10)) then
+			PADDLE_A_MOTION<= to_unsigned(6,10);
+		else
+			PADDLE_A_MOTION<= to_unsigned(0,10);
+			
+		end if;
+		end if;
+		PADDLE_A_POS_Y<= PADDLE_A_POS_Y + PADDLE_A_MOTION;
+    else
+	   PADDLE_A_POS_Y<= PADDLE_A_POS_Y;
+		end if;
+	else
+		PADDLE_A_POS_Y<=to_unsigned(240,10);
+	end if;
+
+end process move_ball_vert1;
+
+move_ball_vert2:
+process
+begin
+wait until rising_edge(vx) and hx='0';
+	
+	if set_po_start='1' and resetc='1' then
+	if (ENABLE_TECLADO_B='1') then
+	if(TECLADO_B='1') then
+			if(PADDLE_B_POS_Y>SIZE_B) then
+			PADDLE_B_MOTION<= to_unsigned(-6,10);
+			else
+			PADDLE_B_MOTION<= to_unsigned(0,10);
+			end if;
+	else	
+		if(PADDLE_B_POS_Y<to_unsigned(439,10)) then
+			PADDLE_B_MOTION<= to_unsigned(6,10);
+		else
+			PADDLE_B_MOTION<= to_unsigned(0,10);
+			
+		end if;
+		end if;
+		PADDLE_B_POS_Y<= PADDLE_B_POS_Y + PADDLE_B_MOTION;
+	else
+		PADDLE_B_POS_Y<=PADDLE_B_POS_Y;
+		end if;
+	else
+		PADDLE_B_POS_Y<=to_unsigned(240,10);
+	end if;
+end process move_ball_vert2;
+------------------------------------------------
+
+move_ball_horz:process
+begin
+wait until rising_edge(hx) and vx='0';
+if set_po_start='1' and resetc='1' then
+	if (('0' & PADDLE_A_POS_X)+SIZE_A+to_unsigned(10,10)=ball_x_pos) 
+	and ('0' & PADDLE_A_POS_Y <= ball_y_pos + SIZE_B)
+	and	(PADDLE_A_POS_Y+SIZE_B >= '0' & ball_y_pos)
+	then ball_x_motion<= to_unsigned(1,10);
+
+	elsif (('0' & PADDLE_B_POS_X)-SIZE_A-to_unsigned(6,10)=ball_x_pos) 
+	and ('0' & PADDLE_B_POS_Y <= ball_y_pos + SIZE_B) 
+	and	(PADDLE_B_POS_Y+SIZE_B >= '0' & ball_y_pos)
+	then ball_x_motion<= to_unsigned(-1,10);
+
+	else
+		if (('0' & ball_x_pos) >= to_unsigned(639,10) - size) 
+		then ball_x_motion<= to_unsigned(-1,10);
+		
+		elsif ball_x_pos <=size
+		then ball_x_motion<= to_unsigned(1,10);
+		end if;
+	end if;
+	ball_x_pos<= ball_x_pos + ball_x_motion;
+else
+	ball_x_pos<=to_unsigned(312,10);--ball_x_pos;
+end if;
+end process move_ball_horz;
+
+CHECK_SCORE: process(resetc,hx)
+variable sa,sb: std_logic_vector(1 downto 0);
+begin
+scoreA<=sa;
+scoreB<=sb;
+if resetc='0' then
+	sa:="00";
+	sb:="00";
+	set_po_start<='1';
+elsif rising_edge(hx) and vx='0' then
+	if((('0' & ball_x_pos) = to_unsigned(640,10) - size))then
+		sa:=sa+'1';
+	elsif (ball_x_pos = size-to_unsigned(1,10)) then
+		sb:=sb+'1';
+end if;
+if sa/="11" and sb/="11" then set_po_start<='1';
+else set_po_start<='0';
+end if;
+end if;
+end process CHECK_SCORE;
+CHECK_WIN: process(resetc,scoreA,scoreB)
+begin
+if resetc='0'  then winner<="00";
+elsif scoreA="11" then winner<="01";
+elsif scoreB="11" then winner<="10";
+else winner<="00";
+end if;
+end process CHECK_WIN;
+
+end beh;

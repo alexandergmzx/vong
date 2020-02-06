@@ -1,0 +1,86 @@
+--------------------------------------------------------------------------------------
+Timing Analyzer Summary
+--------------------------------------------------------------------------------------
+
+Type           : Worst-case tsu
+Slack          : N/A
+Required Time  : None
+Actual Time    : 6.312 ns
+From           : resetc
+To             : ball_x_motion[1]
+From Clock     : --
+To Clock       : CLOCK_50
+Failed Paths   : 0
+
+Type           : Worst-case tco
+Slack          : N/A
+Required Time  : None
+Actual Time    : 15.984 ns
+From           : PADDLE_B_POS_Y[1]
+To             : VGA_B[4]
+From Clock     : CLOCK_50
+To Clock       : --
+Failed Paths   : 0
+
+Type           : Worst-case th
+Slack          : N/A
+Required Time  : None
+Actual Time    : 0.159 ns
+From           : SWITCH[1]
+To             : PADDLE_B_POS_Y[1]
+From Clock     : --
+To Clock       : CLOCK_50
+Failed Paths   : 0
+
+Type           : Clock Setup: 'CLOCK_50'
+Slack          : 1.842 ns
+Required Time  : 50.00 MHz ( period = 20.000 ns )
+Actual Time    : 61.29 MHz ( period = 16.316 ns )
+From           : letreros:scoA|EDO_F.E27_2927
+To             : letreros:scoA|EDO.E27
+From Clock     : CLOCK_50
+To Clock       : CLOCK_50
+Failed Paths   : 0
+
+Type           : Clock Setup: 'VGAS_DE2:vga|sycclk:sycclk_inst|altpll:altpll_component|_clk0'
+Slack          : 32.485 ns
+Required Time  : 25.00 MHz ( period = 40.000 ns )
+Actual Time    : 133.07 MHz ( period = 7.515 ns )
+From           : PADDLE_B_POS_Y[1]
+To             : ball_y_motion[2]
+From Clock     : VGAS_DE2:vga|sycclk:sycclk_inst|altpll:altpll_component|_clk0
+To Clock       : VGAS_DE2:vga|sycclk:sycclk_inst|altpll:altpll_component|_clk0
+Failed Paths   : 0
+
+Type           : Clock Hold: 'CLOCK_50'
+Slack          : -5.792 ns
+Required Time  : 50.00 MHz ( period = 20.000 ns )
+Actual Time    : N/A
+From           : letreros:scoA|EDO.E29
+To             : letreros:scoA|EDO_X.E30_3403
+From Clock     : CLOCK_50
+To Clock       : CLOCK_50
+Failed Paths   : 66
+
+Type           : Clock Hold: 'VGAS_DE2:vga|sycclk:sycclk_inst|altpll:altpll_component|_clk0'
+Slack          : -2.096 ns
+Required Time  : 25.00 MHz ( period = 40.000 ns )
+Actual Time    : N/A
+From           : VGAS_DE2:vga|vert_sync_out
+To             : ball_x_pos[3]
+From Clock     : VGAS_DE2:vga|sycclk:sycclk_inst|altpll:altpll_component|_clk0
+To Clock       : VGAS_DE2:vga|sycclk:sycclk_inst|altpll:altpll_component|_clk0
+Failed Paths   : 50
+
+Type           : Total number of failed paths
+Slack          : 
+Required Time  : 
+Actual Time    : 
+From           : 
+To             : 
+From Clock     : 
+To Clock       : 
+Failed Paths   : 116
+
+--------------------------------------------------------------------------------------
+
